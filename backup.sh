@@ -4,7 +4,6 @@
 SRC_DIRS=(
   "/home/docker/containers"
   "/home/docker/immich"
-  "/home/docker/immich-app"
   "/home/docker/immich-db"
 )
 
@@ -30,4 +29,3 @@ done
 find "$DEST_BASE" -maxdepth 1 -type d -mtime +14 -exec rm -rf {} \;
 
 echo "Backup complete."
-

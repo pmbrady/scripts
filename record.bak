@@ -73,15 +73,12 @@ SCRIPT_PATH="$BASE_DIR/record_$FILENAME.sh"
 LOGFILE="$LOG_DIR/${FILENAME}_$(date +%Y%m%d_%H%M%S).log"
 
 # Determine next available MP4 filename to avoid overwriting
-# ... (rest of your script above remains the same) ...
-
-# Determine next available TS filename (changed from mp4 to ts)
 i=0
 while true; do
     if [ $i -eq 0 ]; then
-        OUTFILE="$BASE_DIR/${FILENAME}.ts"
+        OUTFILE="$BASE_DIR/${FILENAME}.mp4"
     else
-        OUTFILE="$BASE_DIR/${FILENAME}-$i.ts"
+        OUTFILE="$BASE_DIR/${FILENAME}-$i.mp4"
     fi
     [ ! -f "$OUTFILE" ] && break
     i=$((i + 1))
@@ -89,7 +86,7 @@ done
 
 cat <<'EOF' > "$SCRIPT_PATH"
 #!/bin/bash
-# Auto-generated recording script (TS Append, incremental filenames)
+# Auto-generated recording script (MP4 direct, incremental filenames)
 
 IPTV_URL="__IPTV_URL__"
 OUTFILE="__OUTFILE__"
@@ -108,35 +105,33 @@ log "Output: $OUTFILE"
 set -o pipefail
 
 while [ $(date +%s) -lt $END_TIMESTAMP ]; do
-    NOW=$(date +%s)
-    DURATION_LEFT=$(( END_TIMESTAMP - NOW ))
-    
+    DURATION_LEFT=$(( END_TIMESTAMP - $(date +%s) ))
     if [ $DURATION_LEFT -le 0 ]; then
         log "Reached end time, stopping recording"
         break
     fi
 
-    # Using '>>' to append to the .ts file instead of overwriting
-    # streamlink writes to stdout, and we append that directly to our file
-    log "Connecting to stream (Remaining time: ${DURATION_LEFT}s)..."
-    
-    timeout $DURATION_LEFT streamlink --stdout "$IPTV_URL" best >> "$OUTFILE"
+    timeout $DURATION_LEFT streamlink --stdout "$IPTV_URL" best \
+        | ffmpeg -y -loglevel error -i - -c copy -f mp4 "$OUTFILE"
 
-    STREAMLINK_EXIT=$?
-    
-    if [ $(date +%s) -lt $END_TIMESTAMP ]; then
-        log "Stream interrupted (Exit code: $STREAMLINK_EXIT). Retrying in 10 seconds..."
+    # capture exit codes of both pipeline components
+    STREAMLINK_EXIT=${PIPESTATUS[0]:-127}
+    FFMPEG_EXIT=${PIPESTATUS[1]:-127}
+    log "streamlink exit: $STREAMLINK_EXIT, ffmpeg exit: $FFMPEG_EXIT"
+
+    # consider it a success only if both are 0
+    if [ $STREAMLINK_EXIT -ne 0 ] || [ $FFMPEG_EXIT -ne 0 ]; then
+        log "Error during recording, retrying in 10 seconds..."
         sleep 10
         continue
-    else
-        log "Recording reached scheduled end time."
-        break
     fi
+
+    log "Recording finished successfully"
+    break
 done
 
 log "Recording completed: $OUTFILE"
 EOF
-
 
 # Replace placeholders
 sed -i \
