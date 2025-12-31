@@ -89,10 +89,11 @@ done
 
 cat <<'EOF' > "$SCRIPT_PATH"
 #!/bin/bash
-# Auto-generated recording script (TS Append, incremental filenames)
+# Auto-generated recording script (TS Append + Final MP4 Conversion)
 
 IPTV_URL="__IPTV_URL__"
-OUTFILE="__OUTFILE__"
+OUTFILE_TS="__OUTFILE__"
+OUTFILE_MP4="${OUTFILE_TS%.ts}.mp4"
 LOGFILE="__LOGFILE__"
 END_TIMESTAMP=__END_TIMESTAMP__
 CHANNEL="__CHANNEL__"
@@ -102,41 +103,43 @@ log() {
 }
 
 log "Recording started for channel: $CHANNEL"
-log "Output: $OUTFILE"
+log "Temp Output: $OUTFILE_TS"
 
-# Loop until end time
 set -o pipefail
 
+# 1. THE RECORDING PHASE
 while [ $(date +%s) -lt $END_TIMESTAMP ]; do
     NOW=$(date +%s)
     DURATION_LEFT=$(( END_TIMESTAMP - NOW ))
     
-    if [ $DURATION_LEFT -le 0 ]; then
-        log "Reached end time, stopping recording"
-        break
-    fi
+    if [ $DURATION_LEFT -le 0 ]; then break; fi
 
-    # Using '>>' to append to the .ts file instead of overwriting
-    # streamlink writes to stdout, and we append that directly to our file
-    log "Connecting to stream (Remaining time: ${DURATION_LEFT}s)..."
-    
-    timeout $DURATION_LEFT streamlink --stdout "$IPTV_URL" best >> "$OUTFILE"
-
-    STREAMLINK_EXIT=$?
+    log "Connecting to stream..."
+    timeout $DURATION_LEFT streamlink --stdout "$IPTV_URL" best >> "$OUTFILE_TS"
     
     if [ $(date +%s) -lt $END_TIMESTAMP ]; then
-        log "Stream interrupted (Exit code: $STREAMLINK_EXIT). Retrying in 10 seconds..."
+        log "Stream dropped. Retrying in 10s..."
         sleep 10
-        continue
-    else
-        log "Recording reached scheduled end time."
-        break
     fi
 done
 
-log "Recording completed: $OUTFILE"
-EOF
+# 2. THE CONVERSION PHASE
+if [ -f "$OUTFILE_TS" ]; then
+    log "Converting to MP4 for Plex..."
+    # -absf aac_adtstoasc fixes bitstream filter issues common in TS to MP4 conversions
+    ffmpeg -y -i "$OUTFILE_TS" -c copy -absf aac_adtstoasc "$OUTFILE_MP4" >> "$LOGFILE" 2>&1
+    
+    if [ $? -eq 0 ]; then
+        log "Conversion successful: $OUTFILE_MP4"
+        rm "$OUTFILE_TS"
+        log "Temporary TS file removed."
+    else
+        log "Conversion failed. Keeping TS file: $OUTFILE_TS"
+    fi
+fi
 
+log "Process completed."
+EOF
 
 # Replace placeholders
 sed -i \

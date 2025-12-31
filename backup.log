@@ -1,16 +1,14 @@
-Backing up /home/docker/containers to /home/docker/nas-backup/2025-12-30/containers.tar.gz
+Backing up /home/docker/containers to /home/docker/nas-backup/2025-12-31/containers.tar.gz
 tar: Removing leading `/' from member names
 tar: /home/docker/containers/qbittorrent/config/qBittorrent/ipc-socket: socket ignored
 tar: /home/docker/containers/pulse/data/alerts: file changed as we read it
-Backing up /home/docker/immich to /home/docker/nas-backup/2025-12-30/immich.tar.gz
+tar: /home/docker/containers/sonarr/config/logs.db-shm: File removed before we read it
+tar: /home/docker/containers/sonarr/config/logs.db-wal: File removed before we read it
+tar: /home/docker/containers/sonarr/config: file changed as we read it
+Backing up /home/docker/immich to /home/docker/nas-backup/2025-12-31/immich.tar.gz
 tar: Removing leading `/' from member names
-Backing up /home/docker/immich-app to /home/docker/nas-backup/2025-12-30/immich-app.tar.gz
-tar: Removing leading `/' from member names
-tar: /home/docker/immich-app/postgres: Cannot open: Permission denied
-tar: Exiting with failure status due to previous errors
-Backing up /home/docker/immich-db to /home/docker/nas-backup/2025-12-30/immich-db.tar.gz
+Backing up /home/docker/immich-db to /home/docker/nas-backup/2025-12-31/immich-db.tar.gz
 tar: Removing leading `/' from member names
 tar: /home/docker/immich-db: Cannot open: Permission denied
 tar: Exiting with failure status due to previous errors
-/home/docker/scripts/backup.sh: line 28: IPTV: command not found
-Invalid start date: 2025-12- ::00
+Backup complete.
